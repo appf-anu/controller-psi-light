@@ -117,7 +117,7 @@ var (
 	doTheScrollMode bool
 	allZero bool
 	noMetrics, dummy, absolute bool
-	conditionsPath, hostTag   string
+	conditionsPath, hostTag, groupTag   string
 	interval         time.Duration
 )
 
@@ -404,6 +404,9 @@ func writeMetrics(lightValues []int) error {
 		if hostTag != "" {
 			m.AddTag("host", hostTag)
 		}
+		if groupTag != "" {
+			m.AddTag("group", groupTag)
+		}
 		telegrafClient.Write(m)
 	}
 	return nil
@@ -552,7 +555,7 @@ quirks:
 }
 
 func init() {
-
+	var err error
 	errLog = log.New(os.Stderr, "[fytopanel] ", log.Ldate|log.Ltime|log.Lshortfile)
 	// get the local zone and offset
 	zoneName, zoneOffset = time.Now().Zone()
@@ -564,16 +567,71 @@ func init() {
 	}
 
 	flag.BoolVar(&doTheDiscoMode, "disco-mode", false, "turn on disco mode")
-
+	if tempV := strings.ToLower(os.Getenv("DISCO")); tempV != "" {
+		if tempV == "true" || tempV == "1" {
+			doTheDiscoMode = true
+		} else {
+			doTheDiscoMode = false
+		}
+	}
 	flag.BoolVar(&doTheScrollMode, "scroll-mode", false, "turn on scroll mode")
+	if tempV := strings.ToLower(os.Getenv("SCROLL")); tempV != "" {
+		if tempV == "true" || tempV == "1" {
+			doTheScrollMode = true
+		} else {
+			doTheScrollMode = false
+		}
+	}
+
 	flag.BoolVar(&allZero, "off", false, "turn off all channels")
 
+	hostname := os.Getenv("NAME")
+
 	flag.BoolVar(&noMetrics, "no-metrics", false, "dont collect metrics")
+	if tempV := strings.ToLower(os.Getenv("NO_METRICS")); tempV != "" {
+		if tempV == "true" || tempV == "1" {
+			noMetrics = true
+		} else {
+			noMetrics = false
+		}
+	}
 	flag.BoolVar(&dummy, "dummy", false, "dont send conditions to light")
+	if tempV := strings.ToLower(os.Getenv("DUMMY")); tempV != "" {
+		if tempV == "true" || tempV == "1" {
+			dummy = true
+		} else {
+			dummy = false
+		}
+	}
 	flag.BoolVar(&absolute, "absolute", false, "use absolute light values in conditions file, not percentages")
-	flag.StringVar(&hostTag, "host-tag", "", "host tag to add to the measurements")
-	flag.StringVar(&conditionsPath, "conditions", "", "conditions file to")
+	if tempV := strings.ToLower(os.Getenv("ABSOLUTE")); tempV != "" {
+		if tempV == "true" || tempV == "1" {
+			absolute = true
+		} else {
+			absolute = false
+		}
+	}
+	flag.StringVar(&hostTag, "host-tag", hostname, "host tag to add to the measurements")
+	if tempV := os.Getenv("HOST_TAG"); tempV != "" {
+		hostTag = tempV
+	}
+	flag.StringVar(&groupTag, "group-tag", "nonspc", "host tag to add to the measurements")
+	if tempV := os.Getenv("GROUP_TAG"); tempV != "" {
+		groupTag = tempV
+	}
+	flag.StringVar(&conditionsPath, "conditions", "", "conditions file to run")
+	if tempV := os.Getenv("CONDITIONS_FILE"); tempV != "" {
+		conditionsPath = tempV
+	}
+
 	flag.DurationVar(&interval, "interval", time.Minute*10, "interval to run conditions/record metrics at")
+	if tempV := os.Getenv("INTERVAL"); tempV != "" {
+		interval, err = time.ParseDuration(tempV)
+		if err != nil {
+			errLog.Println("Couldnt parse interval from environment")
+			errLog.Println(err)
+		}
+	}
 	flag.Parse()
 	if noMetrics && dummy {
 		errLog.Println("dummy and no-metrics specified, nothing to do.")
