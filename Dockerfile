@@ -1,4 +1,4 @@
-FROM amd64/alpine:latest
+FROM alpine:latest
 RUN apk add --no-cache tzdata
 COPY controller-psi-light /bin
 COPY run.sh /bin
