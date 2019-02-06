@@ -4,14 +4,13 @@ start = datetime.datetime.now()- datetime.timedelta(minutes=10)
 start = start.replace(microsecond=0, second=0, minute=0, hour=0)
 
 end = start + datetime.timedelta(days=28)
-interval = datetime.timedelta(minutes=2)
-daylength = datetime.timedelta(hours=1)
+interval = datetime.timedelta(minutes=10)
+daylength = datetime.timedelta(hours=4)
 
 sys.stdout.write("datetime,\t\tdatetime-sim,\t\ttemp,\thum,\t0,\t1,\t3,\t4,\t5,\t6,\t7\n") 
 while start < end:
     start += interval
     phase = 0.5+ math.sin(start.timestamp()/daylength.total_seconds()*math.pi*2) /2
-    
     # print(start, "\t{0:.1f}".format(lphase))
     lights = [max((phase-0.1)*100*(.5+(math.sin(x/5)/3)),0) for x in range(7)] 
     lights[-1] = 10

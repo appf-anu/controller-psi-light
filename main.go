@@ -1,21 +1,21 @@
 package main
 
 import (
-	"fmt"
-	"github.com/jacobsa/go-serial/serial"
-	"time"
-	"flag"
-	"io"
-	"math/rand"
-	"math"
-	"os"
-	"log"
-	"github.com/mdaffin/go-telegraf"
-	"github.com/bcampbell/fuzzytime"
 	"bufio"
+	"flag"
+	"fmt"
+	"github.com/bcampbell/fuzzytime"
+	"github.com/jacobsa/go-serial/serial"
+	"github.com/mdaffin/go-telegraf"
+	"io"
+	"log"
+	"math"
+	"math/rand"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
-	"regexp"
+	"time"
 )
 
 const (
@@ -58,7 +58,6 @@ const (
 	channel5 = 6
 	channel6 = 7
 	channel7 = 8
-
 )
 
 var availableChannels = []int{
@@ -103,35 +102,32 @@ const (
 	cmdNoAns = 2
 )
 
-
 var (
-	errLog *log.Logger
-	ctx fuzzytime.Context
-	zoneName string
+	errLog     *log.Logger
+	ctx        fuzzytime.Context
+	zoneName   string
 	zoneOffset int
 )
 
-
 var (
-	doTheDiscoMode bool
-	doTheScrollMode bool
-	allZero bool
-	noMetrics, dummy, absolute bool
-	conditionsPath, hostTag, groupTag   string
-	interval         time.Duration
+	doTheDiscoMode                             bool
+	doTheScrollMode                            bool
+	allZero                                    bool
+	noMetrics, dummy, absolute                 bool
+	conditionsPath, hostTag, groupTag, userTag string
+	interval                                   time.Duration
 )
 
 var port io.ReadWriteCloser
 
 const (
 	matchFloatExp = `[-+]?\d*\.\d+|\d+`
-	matchIntsExp = `\b(\d+)\b`
+	matchIntsExp  = `\b(\d+)\b`
 )
 
 // TsRegex is a regexp to find a timestamp within a filename
 var /* const */ matchFloat = regexp.MustCompile(matchFloatExp)
 var /* const */ matchInts = regexp.MustCompile(matchIntsExp)
-
 
 // ConstructPacket constructs a packet according to the protocol laid out by PSI to set a channel to value.
 // address is the "address" of the light, a non-negative integer.
@@ -265,14 +261,14 @@ func random(max int) int {
 	return rand.Intn(max)
 }
 
-func setOne(port io.ReadWriteCloser, lightChannel, value int) ( err error ){
+func setOne(port io.ReadWriteCloser, lightChannel, value int) (err error) {
 	intensityPackt, err := SetIntensityPacket(lightChannel, value)
-	if err != nil{
+	if err != nil {
 		errLog.Println(err)
 		return
 	}
 	activatePackt, err := ActivatePacket(lightChannel)
-	if err != nil{
+	if err != nil {
 		errLog.Println(err)
 		return
 	}
@@ -282,10 +278,8 @@ func setOne(port io.ReadWriteCloser, lightChannel, value int) ( err error ){
 	return nil
 }
 
-
-
-func setMany(port io.ReadWriteCloser, values []int) ( err error ){
-	for i := 0; i < len(values) && i < len(availableChannels); i ++{
+func setMany(port io.ReadWriteCloser, values []int) (err error) {
+	for i := 0; i < len(values) && i < len(availableChannels); i++ {
 		lightChannel := availableChannels[i]
 		value := values[i]
 		if value < 0 {
@@ -293,13 +287,13 @@ func setMany(port io.ReadWriteCloser, values []int) ( err error ){
 		}
 		intensityPackt, err := SetIntensityPacket(lightChannel, value)
 
-		if err != nil{
+		if err != nil {
 			errLog.Println(err)
 			return err
 		}
 
 		activatePackt, err := ActivatePacket(lightChannel)
-		if err != nil{
+		if err != nil {
 			errLog.Println(err)
 			return err
 		}
@@ -311,20 +305,19 @@ func setMany(port io.ReadWriteCloser, values []int) ( err error ){
 	return nil
 }
 
-
-func scrollMode(max int){
+func scrollMode(max int) {
 	if max > 1022 {
 		max = 1022
 	}
 	setAllZero()
 
-	scrollOne := func (lightChannel int){
+	scrollOne := func(lightChannel int) {
 		fmt.Println("Scrolling channel ", lightChannel)
-		for value := -math.Pi/2; value <= 1.5*math.Pi; value += 0.1 {
-			sinV := (1 + math.Sin(value))/2
+		for value := -math.Pi / 2; value <= 1.5*math.Pi; value += 0.1 {
+			sinV := (1 + math.Sin(value)) / 2
 			thisV := sinV * float64(max)
 			setOne(port, lightChannel, int(math.Round(thisV)))
-			time.Sleep(100*time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
@@ -333,27 +326,26 @@ func scrollMode(max int){
 			scrollOne(lightChannel)
 		}
 		scrollOne(serviceChannel1)
-		time.Sleep(1*time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }
 
-func setAllRandom(port io.ReadWriteCloser, max int){
-	for i := 1; i < len(availableChannels); i++{
+func setAllRandom(port io.ReadWriteCloser, max int) {
+	for i := 1; i < len(availableChannels); i++ {
 		lightChannel := availableChannels[i]
 		value := random(max)
 		intensityPackt, err := SetIntensityPacket(lightChannel, value)
-		if err != nil{
+		if err != nil {
 			errLog.Println(err)
 		}
 		activatePackt, err := ActivatePacket(lightChannel)
-		if err != nil{
+		if err != nil {
 			errLog.Println(err)
 		}
 		port.Write(intensityPackt)
 		port.Write(activatePackt)
 	}
 }
-
 
 func parseDateTime(tString string) (time.Time, error) {
 	datetimeValue, _, err := ctx.Extract(tString)
@@ -385,7 +377,7 @@ func min(x, y int) int {
 }
 
 func writeMetrics(lightValues []int) error {
-	if !noMetrics{
+	if !noMetrics {
 		telegrafHost := "telegraf:8092"
 		if os.Getenv("TELEGRAF_HOST") != "" {
 			telegrafHost = os.Getenv("TELEGRAF_HOST")
@@ -398,7 +390,7 @@ func writeMetrics(lightValues []int) error {
 		defer telegrafClient.Close()
 
 		m := telegraf.NewMeasurement("psi-light")
-		for i,v := range lightValues{
+		for i, v := range lightValues {
 			m.AddInt(fmt.Sprintf("chan-%d", i), v)
 		}
 		if hostTag != "" {
@@ -407,6 +399,10 @@ func writeMetrics(lightValues []int) error {
 		if groupTag != "" {
 			m.AddTag("group", groupTag)
 		}
+		if userTag != "" {
+			m.AddTag("user", userTag)
+		}
+
 		telegrafClient.Write(m)
 	}
 	return nil
@@ -420,16 +416,16 @@ func runStuff(theTime time.Time, lineSplit []string) bool {
 
 	for i, v := range stringVals {
 		found := matchFloat.FindString(v)
-		if len(found) < 0{
+		if len(found) < 0 {
 			errLog.Printf("couldnt parse %s as float.\n", v)
 			continue
 		}
 		fl, err := strconv.ParseFloat(found, 64)
-		if err != nil{
+		if err != nil {
 			errLog.Println(err)
 			continue
 		}
-		if !absolute{
+		if !absolute {
 			// convert from percentage if we are not using absolute values.
 			fl = fl * 10.22
 		}
@@ -441,7 +437,7 @@ func runStuff(theTime time.Time, lineSplit []string) bool {
 	errLog.Println("ran ", theTime.Format("2006-01-02T15:04:05"), lightValues)
 
 	for x := 0; x < 5; x++ {
-		if err := writeMetrics(lightValues); err != nil{
+		if err := writeMetrics(lightValues); err != nil {
 			errLog.Println(err)
 			time.Sleep(200 * time.Millisecond)
 			continue
@@ -480,7 +476,7 @@ func runConditions() {
 
 		// if we are before the time skip until we are after it
 		// the -10s means that we shouldnt run again.
-		if theTime.Before(time.Now()){
+		if theTime.Before(time.Now()) {
 			lastLineSplit = lineSplit
 			lastTime = theTime
 			continue
@@ -489,18 +485,18 @@ func runConditions() {
 		if firstRun {
 			firstRun = false
 			errLog.Println("running firstrun line")
-			for i:=0; i < 10; i++{
+			for i := 0; i < 10; i++ {
 				if runStuff(lastTime, lastLineSplit) {
 					break
 				}
 			}
 		}
 
-		errLog.Printf("sleeping for %ds\n",int(time.Until(theTime).Seconds()))
+		errLog.Printf("sleeping for %ds\n", int(time.Until(theTime).Seconds()))
 		time.Sleep(time.Until(theTime))
 
 		// RUN STUFF HERE
-		for i:=0; i < 10; i++{
+		for i := 0; i < 10; i++ {
 			if runStuff(theTime, lineSplit) {
 				break
 			}
@@ -510,21 +506,20 @@ func runConditions() {
 	}
 }
 
-func setAllZero(){
+func setAllZero() {
 	activatePackt, err := DeActivatePacket(serviceChannel1)
-		if err != nil{
-			errLog.Println(err)
-		}
+	if err != nil {
+		errLog.Println(err)
+	}
 	port.Write(activatePackt)
 }
 
-func discoMode(max int){
-	ticker := time.NewTicker(500* time.Millisecond)
+func discoMode(max int) {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	for range ticker.C {
 		setAllRandom(port, max)
 	}
 }
-
 
 var usage = func() {
 	use := `
@@ -611,14 +606,22 @@ func init() {
 			absolute = false
 		}
 	}
+
 	flag.StringVar(&hostTag, "host-tag", hostname, "host tag to add to the measurements")
 	if tempV := os.Getenv("HOST_TAG"); tempV != "" {
 		hostTag = tempV
 	}
+
 	flag.StringVar(&groupTag, "group-tag", "nonspc", "host tag to add to the measurements")
 	if tempV := os.Getenv("GROUP_TAG"); tempV != "" {
 		groupTag = tempV
 	}
+
+	flag.StringVar(&userTag, "user-tag", "", "user specified tag")
+	if tempV := os.Getenv("USER_TAG"); tempV != "" {
+		userTag = tempV
+	}
+
 	flag.StringVar(&conditionsPath, "conditions", "", "conditions file to run")
 	if tempV := os.Getenv("CONDITIONS_FILE"); tempV != "" {
 		conditionsPath = tempV
@@ -638,8 +641,6 @@ func init() {
 		os.Exit(1)
 	}
 }
-
-
 
 func main() {
 	// Set up options.
@@ -664,7 +665,7 @@ func main() {
 		panic(err)
 	}
 
-	if allZero{
+	if allZero {
 		setAllZero()
 	}
 	if doTheDiscoMode {
