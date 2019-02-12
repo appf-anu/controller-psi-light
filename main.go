@@ -110,12 +110,12 @@ var (
 )
 
 var (
-	doTheDiscoMode                             bool
-	doTheScrollMode                            bool
-	allZero                                    bool
-	noMetrics, dummy, absolute                 bool
-	conditionsPath, hostTag, groupTag, userTag string
-	interval                                   time.Duration
+	doTheDiscoMode                            bool
+	doTheScrollMode                           bool
+	allZero                                   bool
+	noMetrics, dummy, absolute                bool
+	conditionsPath, hostTag, groupTag, didTag string
+	interval                                  time.Duration
 )
 
 var port io.ReadWriteCloser
@@ -399,8 +399,8 @@ func writeMetrics(lightValues []int) error {
 		if groupTag != "" {
 			m.AddTag("group", groupTag)
 		}
-		if userTag != "" {
-			m.AddTag("user", userTag)
+		if didTag != "" {
+			m.AddTag("user", didTag)
 		}
 
 		telegrafClient.Write(m)
@@ -612,14 +612,14 @@ func init() {
 		hostTag = tempV
 	}
 
-	flag.StringVar(&groupTag, "group-tag", "nonspc", "host tag to add to the measurements")
+	flag.StringVar(&groupTag, "group-tag", "nonspc", "group tag to add to the measurements")
 	if tempV := os.Getenv("GROUP_TAG"); tempV != "" {
 		groupTag = tempV
 	}
 
-	flag.StringVar(&userTag, "user-tag", "", "user specified tag")
-	if tempV := os.Getenv("USER_TAG"); tempV != "" {
-		userTag = tempV
+	flag.StringVar(&didTag, "did-tag", "", "deliverable id tag")
+	if tempV := os.Getenv("DID_TAG"); tempV != "" {
+		didTag = tempV
 	}
 
 	flag.StringVar(&conditionsPath, "conditions", "", "conditions file to run")
