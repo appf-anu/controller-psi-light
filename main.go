@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"github.com/appf-anu/chamber-tools"
 	"flag"
 	"fmt"
 	"github.com/bcampbell/fuzzytime"
@@ -116,6 +116,7 @@ var (
 	noMetrics, dummy, absolute                bool
 	conditionsPath, hostTag, groupTag, didTag string
 	interval                                  time.Duration
+	loopFirstDay                                  bool
 )
 
 var port io.ReadWriteCloser
@@ -347,35 +348,6 @@ func setAllRandom(port io.ReadWriteCloser, max int) {
 	}
 }
 
-func parseDateTime(tString string) (time.Time, error) {
-	datetimeValue, _, err := ctx.Extract(tString)
-	if err != nil {
-		errLog.Printf("couldn't extract datetime: %s", err)
-	}
-	datetimeValue.Time.SetHour(datetimeValue.Time.Hour())
-	datetimeValue.Time.SetMinute(datetimeValue.Time.Minute())
-	datetimeValue.Time.SetSecond(datetimeValue.Time.Second())
-	datetimeValue.Time.SetTZOffset(zoneOffset)
-
-	return time.Parse("2006-01-02T15:04:05Z07:00", datetimeValue.ISOFormat())
-}
-
-// max returns the larger of x or y.
-func max(x, y int) int {
-	if x < y {
-		return y
-	}
-	return x
-}
-
-// min returns the smaller of x or y.
-func min(x, y int) int {
-	if x > y {
-		return y
-	}
-	return x
-}
-
 func writeMetrics(lightValues []int) error {
 	if !noMetrics {
 		telegrafHost := "telegraf:8092"
@@ -447,65 +419,6 @@ func runStuff(theTime time.Time, lineSplit []string) bool {
 	return true
 }
 
-func runConditions() {
-	errLog.Printf("running conditions file: %s\n", conditionsPath)
-	file, err := os.Open(conditionsPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	var lastTime time.Time
-	var lastLineSplit []string
-	firstRun := true
-	for scanner.Scan() {
-		line := scanner.Text()
-		if idx == 0 {
-			idx++
-			continue
-		}
-
-		lineSplit := strings.Split(line, ",")
-		timeStr := lineSplit[0]
-		theTime, err := parseDateTime(timeStr)
-		if err != nil {
-			errLog.Println(err)
-			continue
-		}
-
-		// if we are before the time skip until we are after it
-		// the -10s means that we shouldnt run again.
-		if theTime.Before(time.Now()) {
-			lastLineSplit = lineSplit
-			lastTime = theTime
-			continue
-		}
-
-		if firstRun {
-			firstRun = false
-			errLog.Println("running firstrun line")
-			for i := 0; i < 10; i++ {
-				if runStuff(lastTime, lastLineSplit) {
-					break
-				}
-			}
-		}
-
-		errLog.Printf("sleeping for %ds\n", int(time.Until(theTime).Seconds()))
-		time.Sleep(time.Until(theTime))
-
-		// RUN STUFF HERE
-		for i := 0; i < 10; i++ {
-			if runStuff(theTime, lineSplit) {
-				break
-			}
-		}
-		// end RUN STUFF
-		idx++
-	}
-}
-
 func setAllZero() {
 	activatePackt, err := DeActivatePacket(serviceChannel1)
 	if err != nil {
@@ -546,6 +459,7 @@ quirks:
 	if both -dummy and -no-metrics are specified, this program will exit.
 
 `
+
 	fmt.Printf(use, os.Args[0])
 }
 
@@ -553,13 +467,6 @@ func init() {
 	var err error
 	errLog = log.New(os.Stderr, "[fytopanel] ", log.Ldate|log.Ltime|log.Lshortfile)
 	// get the local zone and offset
-	zoneName, zoneOffset = time.Now().Zone()
-	errLog.Printf("timezone: %s\n", zoneName)
-
-	ctx = fuzzytime.Context{
-		DateResolver: fuzzytime.DMYResolver,
-		TZResolver:   fuzzytime.DefaultTZResolver(zoneName),
-	}
 
 	flag.BoolVar(&doTheDiscoMode, "disco-mode", false, "turn on disco mode")
 	if tempV := strings.ToLower(os.Getenv("DISCO")); tempV != "" {
@@ -607,6 +514,15 @@ func init() {
 		}
 	}
 
+	flag.BoolVar(&loopFirstDay, "loop", false, "loop over the first day")
+	if tempV := strings.ToLower(os.Getenv("LOOP")); tempV != "" {
+		if tempV == "true" || tempV == "1" {
+			loopFirstDay = true
+		} else {
+			loopFirstDay = false
+		}
+	}
+
 	flag.StringVar(&hostTag, "host-tag", hostname, "host tag to add to the measurements")
 	if tempV := os.Getenv("HOST_TAG"); tempV != "" {
 		hostTag = tempV
@@ -640,6 +556,12 @@ func init() {
 		errLog.Println("dummy and no-metrics specified, nothing to do.")
 		os.Exit(1)
 	}
+	errLog.Printf("timezone: \t%s\n", chamber_tools.ZoneName)
+	errLog.Printf("hostTag: \t%s\n", hostTag)
+	errLog.Printf("groupTag: \t%s\n", groupTag)
+	errLog.Printf("file: \t%s\n", conditionsPath)
+	errLog.Printf("interval: \t%s\n", interval)
+
 }
 
 func main() {
@@ -676,6 +598,6 @@ func main() {
 	}
 
 	if !dummy && conditionsPath != "" {
-		runConditions()
+		chamber_tools.RunConditions(errLog, runStuff, conditionsPath, loopFirstDay)
 	}
 }
