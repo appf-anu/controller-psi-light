@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os/signal"
+	"syscall"
 )
 
 const (
@@ -45,23 +47,22 @@ const (
 
 const (
 	serviceChannel0 = 2
-	serviceChannel1 = 9
+	serviceChannel1 = 9 // all on
 	serviceChannel2 = 15
 )
 
 const (
-	channel0 = 0
-	channel1 = 1
-	channel2 = 3
-	channel3 = 4
-	channel4 = 5
-	channel5 = 6
-	channel6 = 7
-	channel7 = 8
+	channel1 = 0
+	channel2 = 1
+	channel3 = 3
+	channel4 = 4
+	channel5 = 5
+	channel6 = 6
+	channel7 = 7
+	channel8 = 8
 )
 
 var availableChannels = []int{
-	channel0,
 	channel1,
 	channel2,
 	channel3,
@@ -69,6 +70,7 @@ var availableChannels = []int{
 	channel5,
 	channel6,
 	channel7,
+	channel8,
 	//serviceChannel1, // all on
 }
 
@@ -263,6 +265,9 @@ func random(max int) int {
 }
 
 func setOne(port io.ReadWriteCloser, lightChannel, value int) (err error) {
+	if value < 0 {
+		return nil
+	}
 	intensityPackt, err := SetIntensityPacket(lightChannel, value)
 	if err != nil {
 		errLog.Println(err)
@@ -284,7 +289,7 @@ func setMany(port io.ReadWriteCloser, values []int) (err error) {
 		lightChannel := availableChannels[i]
 		value := values[i]
 		if value < 0 {
-			return nil
+			continue // dont set values less than 0.
 		}
 		intensityPackt, err := SetIntensityPacket(lightChannel, value)
 
@@ -383,10 +388,15 @@ func writeMetrics(lightValues []int) error {
 // runStuff, should send values and write metrics.
 // returns true if program should continue, false if program should retry
 func runStuff(theTime time.Time, lineSplit []string) bool {
-	stringVals := lineSplit[4:]
-	lightValues := make([]int, len(stringVals))
-
-	for i, v := range stringVals {
+	lightValues := make([]int, len(chamber_tools.IndexConfig.ChannelsIdx))
+	if len(chamber_tools.IndexConfig.ChannelsIdx) > len(availableChannels) {
+		errLog.Printf("Invalid number of channels specified in config file (in file %d, required: %d)",
+			len(chamber_tools.IndexConfig.ChannelsIdx), len(availableChannels))
+		os.Exit(1)
+	}
+	errLog.Println(chamber_tools.IndexConfig.ChannelsIdx)
+	for i, idx := range chamber_tools.IndexConfig.ChannelsIdx {
+		v := lineSplit[idx]
 		found := matchFloat.FindString(v)
 		if len(found) < 0 {
 			errLog.Printf("couldnt parse %s as float.\n", v)
@@ -401,10 +411,13 @@ func runStuff(theTime time.Time, lineSplit []string) bool {
 			// convert from percentage if we are not using absolute values.
 			fl = fl * 10.22
 		}
+
 		lightValues[i] = int(math.Round(fl))
+
 	}
 
-	setMany(port, lightValues)
+	setMany(port, lightValues) // we should capture errors here...
+
 
 	errLog.Println("ran ", theTime.Format("2006-01-02T15:04:05"), lightValues)
 
@@ -556,6 +569,10 @@ func init() {
 		errLog.Println("dummy and no-metrics specified, nothing to do.")
 		os.Exit(1)
 	}
+	if conditionsPath != "" && !dummy {
+		chamber_tools.InitIndexConfig(errLog, conditionsPath)
+	}
+
 	errLog.Printf("timezone: \t%s\n", chamber_tools.ZoneName)
 	errLog.Printf("hostTag: \t%s\n", hostTag)
 	errLog.Printf("groupTag: \t%s\n", groupTag)
@@ -565,6 +582,11 @@ func init() {
 }
 
 func main() {
+	gracefulStop := make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+	signal.Notify(gracefulStop, syscall.SIGINT)
+
+
 	// Set up options.
 	// self.ser = serial.Serial('/dev/ttyUSB{}'.format(x), 9600, bytesize=serial.EIGHTBITS,
 	// parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE,
@@ -586,7 +608,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	go func() {
+		sig := <-gracefulStop
+		fmt.Printf("caught sig: %+v", sig)
+		os.Exit(0)
+	}()
+	defer port.Close()
 	if allZero {
 		setAllZero()
 	}
@@ -598,6 +625,7 @@ func main() {
 	}
 
 	if !dummy && conditionsPath != "" {
-		chamber_tools.RunConditions(errLog, runStuff, conditionsPath, loopFirstDay)
+		go chamber_tools.RunConditions(errLog, runStuff, conditionsPath, loopFirstDay)
+		select{}
 	}
 }
