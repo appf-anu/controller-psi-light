@@ -1,0 +1,20 @@
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/appf-anu/chamber-tools"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/bcampbell/fuzzytime"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jacobsa/go-serial"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mdaffin/go-telegraf"
+
+[prune]
+  go-tests = true
+  unused-packages = true
