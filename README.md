@@ -2,6 +2,7 @@
 control software for the PSI fytopanel lights
 
 
+
 ## usage
 ### options
 ```
@@ -45,10 +46,9 @@ use the docker image by pulling from the appf repo
 create a docker container:
 
 ```docker create --name lights-conditions \
-  -e TZ=Australia/Canberra \
+  -e TZ=Australia/Brisbane \
   -v /home/stormaes/conditions:/conditions \
   --network services-net \
-  --device=/dev/ttyUSB0 \
 appf/controller-psi-light
 ```
 
@@ -58,3 +58,12 @@ environment variable "TELEGRAF_HOST" to specify the available telegraf host.
 start the docker container
 
 `docker start lights-conditions`
+
+
+## RPi controller
+
+There is now a raspberry pi controller. use the hypriotos flash script to flash a card.
+
+Remember to set the time in your rtc and also uncomment the correct rtc type in the config.txt
+
+`sudo ./flash -u user-data.yml --bootconf config.txt -d /dev/sdx https://github.com/hypriot/image-builder-rpi/releases/download/v1.11.4/hypriotos-rpi-v1.11.4.img.zip`

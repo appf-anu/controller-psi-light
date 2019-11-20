@@ -1,0 +1,151 @@
+#cloud-config
+# vim: syntax=yaml
+#
+
+# The current version of cloud-init in the Hypriot rpi-64 is 0.7.6
+# When dealing with cloud-init, it is SUPER important to know the version
+# I have wasted many hours creating servers to find out the module I was trying to use wasn't in the cloud-init version I had
+# Documentation: http://cloudinit.readthedocs.io/en/0.7.9/index.html
+
+# Set your hostname here, the manage_etc_hosts will update the hosts file entries as well
+hostname: PSI-Light-Controller
+manage_etc_hosts: true
+
+# You could modify this for your own user information
+users:
+  - name: stormaes
+    gecos: "Hypriot Pirate"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: [ users, docker, video, input ]
+    lock_passwd: true
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDVzScqgCEjmJV6Nrt4DlK7no57DIsNnn83MWdqmCrrJrJWQPKMhHdFuNzHyuJr7g5lXCjafpAOBM/GFRY+XRkavw1fpCLMHsUnML6dUgCa/tT40O5TN/f8JLMsbmuJIidZ7NCGAkb/HPWllTQ3hkB5LnfsegaU293mIgwIDnZQCJfGqtAdHZ7xe6HPYcJiNM91Kvz/pi5p8S7IDgGUQthq88PwMVvIPsac4oVlIUsDLBx73D4QxuLF/OfXue80Q8XewVw02/0H/nPkfy3hk8hDFCgKXyPtMccobpUlxHJr2zUeBtEk9uFQV1CFzCQu2padwkMtspqgI0RCl6V/r6u/ openpgp:0xAAA40AEE
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQChx0xdqcwClYS3QuALcCMfNF1HBFuH6IGX/Ul5ioFcdhZBJc993HTfBCYNlA/aWnb9JTs8QqkYNYd88Gmo+PdnzIznmcH9Ylfu657bUr3CQcuREN/E8RTo3sSc663+l/VJAlHQGgM/AaVV9zFWErztQADjVDjLFQif9wjmJ/UwQlLU+8nsoWCvgtDS1yh4MDVo2iTa95DkP+A1g7XgAspvmCwaLIgFoOc6j7c26HTP9RG6i0b24fsKugdFaEPepXCI/YMp/qali+kvIHLtxzVuh9qAXAI9Dyl5fnDZvCIeDeUp5neXzDMlbTIFEm/6WcSU3aP4kFbEEYdPjlIvs1UD openpgp:0x120BAF97
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMnf/o099ozlmPTu+VE+da9qGoJJrWkm9b7ykMsR9H1g stormaes@VorvadossTwo
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDNWtkCbjotAW08BIuSVw8UTQCL/MFVBzYKiHcjkntrGl6cjIseaksZUTqQByKFKWu8p4Ueqb+x/+r++vTGDun9s7bArYFxLOjEKvItzI9g4RFuA4SUqcUy/Ab+q1rhyMNiY2q3fqhtPnPi0PRQmIeqaKKiX2wn4LqBQ4sy6NtSMYXKQ/EfQAvZQjYLLwVuT092QS62FSFLMwxQIPm3fxCK3D7QYfzo/LD/B3g3P0UmiyFyBFIif7kcQIqWnJw4j3RMRnilG01PtS58zrGB3DICSXDlTny4d7XWBt0jm6cPBWEvHlBMPPKG/C8RdS6YgL9UJST3xEs+iAHLh/zwFSFZ stormaes@github.com
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG5/Lh9VvBM8NNyNnhp+zPfN3/O2MTjH+NJ8a/81bLDX stormaes@VorvadossTwo
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCyJYw6W6pUJXT3LF0mhAoVzyQqXdMYzR4zlLDkw8x9CSlrSZLRkWr+mWHWncIetACbHK1MtUtSNWwcOgeD/ieJ2Lszuk3duPebL0MoQI2SY9bJu8K6jRuDI2WXILgU3aNV6Bkh8IvezEjXw0xoaIW28Q7hHBPZajV9zPsDToNqYQNAgQ8Ut36poGrmnFmO+rKl/e4rzmLQyxGER+eWmOfJNh4RbPscGx1t9mtAuz41QxmipZzuX7RFHd5odLenepuZ1CXBhj3GZKWTUNH8YBsJtLaWRGHy2XGyVE+ZhVnndVNzIDHIhMYYqniVTyQVprhAD6Xjqr5s3nzUSyTKXpCb
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC/cFkVrWKZfKFpTpUDCeenLXqbNaOqfn5H9izReTqLXRMACL4VOeb7Iwap9/o9f9e5/e2njV6ZtfAeZx0fuQlHQ2VbCyrLoY7s1P9ZYXghpez2igXwdMTWHrsaqj0oOIfCxKt226/QYz8CiUaCbyUQni7obZI4KXcUE+GrbLQqvpbyagX5RS6TxXdqMwuziVogKgY9hdYpoB8FG871kJvzwPooU6r815wwJFQ8j4XdVc/fDS0IzGsAA1E1iIltJz5jASO0njKEvE88p83jKLHhfy2sB5EnkfTjL1nqKlZVlRVPDlp08bP5jr3AQztO6TzYJt9dSWwxlITSMUL63zX9 openpgp:0x4151D57F
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDNUPAayPpgzhGGnc2/tM6L47MUrz9Sot2wWaUIjQoH2EG0Dkd+D0XjhtAEKAPMZO9D61G/ODRp2BSSlONNlX+mTHuuF410YxcTudtCsEiukeiaMrE9whDYfQ0iW3GdnJQg41+opwXrsjzJCZuD1WF4QRPlNt9EXuaPaKjjZtGjf4ta+PYsyZ91GV8XZRmL0UjhGrFxa4mCW7AoCErIo5rWkHkyKjLFqoK+wLP3/FU6eFmJWekuO6Xuecnk0x+iBok/TNWWrdL+yJ8ZVQOhRr5sMkn3hehYf6NXOwPkXwglPvujbULdiDBTOtrx1lbM0GbIn567FwbF6LBFv6B2DWEH stormaes@VorvadossTwo
+
+# # Set the locale of the system
+# locale: "en_AU.UTF-8"
+
+# # Set the timezone
+# # Value of 'timezone' must exist in /usr/share/zoneinfo
+timezone: "Australia/Brisbane"
+
+# # Update apt packages on first boot
+package_update: true
+package_upgrade: false
+package_reboot_if_required: false
+
+# # Install any additional apt packages you need here
+packages:
+  - rsync
+  - git
+  - zsh
+  - tree
+  - usbmount
+
+write_files:
+  - content: |
+      #!/bin/bash
+      set -ex
+      LOGFILE="$UM_MOUNTPOINT/log"
+      echo "$(date -Ins) startup successfully mounted to $UM_MOUNTPOINT" >> "$LOGFILE"
+      files=()
+      while IFS=  read -r -d $'\0'; do
+          files+=("$REPLY")
+      done < <(find "$UM_MOUNTPOINT" -name "*.csv" -maxdepth 1 -print0)
+
+      if [ ! -c /dev/ttyUSB0 ]; then
+        echo "$(date -Ins) no usb serial device connected to /dev/ttyUSB0" >> $LOGFILE
+        exit 0
+      fi
+      echo "$(date -Ins) shutting down all previously running containers"
+      docker ps -a --format "{{.ID}}:{{.Names}} - {{.CreatedAt}} - {{.Status}}" >> $LOGFILE
+      docker ps -aq | xargs docker stop | xargs docker rm
+      
+      if [ ${#files[@]} -gt 0 ]; then
+        echo "$(date -Ins) .csv files found, running container" >> $LOGFILE
+        CONDITIONS_NAME=`basename ${files[0]}`
+        docker run -d --name usb-lights-psi \
+              -e CONDITIONS_FILE="/data/$CONDITIONS_NAME" \
+              -e NAME="usb-lights-psi" \
+              -e NO_METRICS=true \
+              -e TZ=Australia/Brisbane \
+              -v $UM_MOUNTPOINT:/data \
+              --device=/dev/ttyUSB0 appf/controller-psi-light:latest /dev/ttyUSB0 
+       echo "$(date -Ins) started container" >> $LOGFILE
+       docker logs usb-lights-psi -f >> $LOGFILE 2>&1
+      else
+        echo "$(date -Ins) No .csv file found on usb" >> $LOGFILE
+      fi
+      exit 0
+    path: /etc/usbmount/mount.d/99_start_container
+    permissions: 0755
+  - content: |
+      #!/bin/bash
+      docker ps -aq | xargs docker kill | xargs docker rm
+    path: /etc/usbmount/umount.d/99_stop_all_containers
+    permission: 0755
+  - content: |
+      allow-hotplug wlan0
+      iface wlan0 inet dhcp
+      wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+      iface default inet dhcp
+    path: /etc/network/interfaces.d/wlan0
+  - content: |
+      country=AU
+      ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+      update_config=1
+      network={
+        ssid="ANU-Insecure"
+        psk="password"
+        proto=RSN
+        key_mgmt=WPA-PSK
+        pairwise=CCMP
+        auth_alg=OPEN
+      }
+    path: /etc/wpa_supplicant/wpa_supplicant.conf
+  - content: |
+      #!/bin/bash
+      git clone https://github.com/robbyrussell/oh-my-zsh.git /home/stormaes/.oh-my-zsh
+      chown -R stormaes:stormaes /home/stormaes/.oh-my-zsh
+      sudo chsh -s /bin/zsh stormaes
+    path: /bin/setup-ohmyzsh
+    permissions: '0755'
+  - content: |
+      export ZSH="/home/stormaes/.oh-my-zsh"
+      ZSH_THEME="bureau"
+      plugins=(docker)
+      source $ZSH/oh-my-zsh.sh
+    path: /home/stormaes/.zshrc
+    permissions: '0755'
+  - content: |
+      # On the Raspberry Pi the RTC isn't available when systemd tries,
+      # set the time from RTC now when it is available.
+      KERNEL=="rtc0", RUN+="/sbin/hwclock --rtc=$root/$name --hctosys"
+    path: /etc/udev/rules.d/85-hwclock.rules
+
+# These commands will be ran once on first boot only
+runcmd:
+  # Pickup the hostname changes
+  - ["ln", "-s", "/opt/vc/lib/libbrcmEGL.so", "/opt/vc/lib/libEGL.so"]
+  - ["ln", "-s", "/opt/vc/lib/libbrcmGLESv2.so", "/opt/vc/lib/libGLESv2.so"]
+  - ["ln", "-s", "/opt/vc/lib/libbrcmOpenVG.so", "/opt/vc/lib/libOpenVG.so"]
+  - ["ln", "-s", "/opt/vc/lib/libbrcmWFC.so", "/opt/vc/lib/libWFC.so"]
+  - [ apt, purge, "-y", fake-hwclock]
+  - [ ifup, wlan0 ]
+  - [ systemctl, restart, avahi-daemon ]
+  - [ systemctl, stop, ntp ]
+  - [ ntpd, "-gq" ]
+  - [ systemctl, disable, ntp ]
+  - [ hwclock, '-w']
+  - [ sh, -c, date ]
+  - [ systemctl, restart, docker ]
+  - [ setup-ohmyzsh ]
+  - [ docker, network, create, services-net ]
+  - [ docker, pull, appf/controller-psi-light ]

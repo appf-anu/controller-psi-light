@@ -1,0 +1,21 @@
+
+# for the screen.
+hdmi_force_hotplug=1
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=800 480 60 6 0 0 0
+#hdmi_drive=1
+#enable_uart=0
+
+# camera settings, see http://elinux.org/RPiconfig#Camera
+start_x=1
+disable_camera_led=1
+gpu_mem=256
+
+dtparam=i2c_arm=on
+
+# for rasclock i2c rtc.
+#dtoverlay=i2c-rtc,pcf2127
+
+# for cheap ebay rtc
+#dtoverlay=i2c-rtc,ds3231
