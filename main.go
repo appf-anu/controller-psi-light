@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 	"os/signal"
@@ -387,48 +386,51 @@ func writeMetrics(lightValues []int) error {
 
 // runStuff, should send values and write metrics.
 // returns true if program should continue, false if program should retry
-func runStuff(theTime time.Time, lineSplit []string) bool {
-	lightValues := make([]int, len(chamber_tools.IndexConfig.ChannelsIdx))
-	if len(chamber_tools.IndexConfig.ChannelsIdx) > len(availableChannels) {
-		errLog.Printf("Invalid number of channels specified in config file (in file %d, required: %d)",
-			len(chamber_tools.IndexConfig.ChannelsIdx), len(availableChannels))
-		os.Exit(1)
+func runStuff(point *chamber_tools.TimePoint) bool {
+
+	minLength := chamber_tools.Min(len(availableChannels), len(point.Channels))
+	if len(point.Channels) < len(availableChannels){
+		errLog.Printf("Number of light values in control file (%d) less than channels for this light (%d)," +
+			" ignoring some channels.\n", len(point.Channels), len(availableChannels))
 	}
-	errLog.Println(chamber_tools.IndexConfig.ChannelsIdx)
-	for i, idx := range chamber_tools.IndexConfig.ChannelsIdx {
-		v := lineSplit[idx]
-		found := matchFloat.FindString(v)
-		if len(found) < 0 {
-			errLog.Printf("couldnt parse %s as float.\n", v)
-			continue
-		}
-		fl, err := strconv.ParseFloat(found, 64)
-		if err != nil {
-			errLog.Println(err)
-			continue
-		}
-		if !absolute {
-			// convert from percentage if we are not using absolute values.
-			fl = fl * 10.22
-		}
-
-		lightValues[i] = int(math.Round(fl))
-
+	if len(point.Channels) > len(availableChannels) {
+		errLog.Printf("Number of light values in control file (%d) greater than channels for this light (%d)," +
+			" ignoring some channels.\n", len(point.Channels), len(availableChannels))
 	}
 
-	setMany(port, lightValues) // we should capture errors here...
+	// setup multiplier
+	multiplier := 1.0
+	if !absolute{
+		multiplier = 10.22
+	}
+
+	intVals := make([]int, minLength)
+	for i, _ := range intVals {
+		if point.Channels[i] < 0{
+			intVals[i] = -1
+		}
+		// convert from percentage if we are not using absolute values.
+		intVals[i] = chamber_tools.Clamp(int(point.Channels[i] * multiplier), -1, 1000)
+
+	}
 
 
-	errLog.Println("ran ", theTime.Format("2006-01-02T15:04:05"), lightValues)
+	if err := setMany(port, intVals); err != nil {
+		errLog.Println(err)
+		return false
+	}
 
+	// success
+	errLog.Printf("ran %s %+v", point.Datetime.Format(time.RFC3339), intVals)
 	for x := 0; x < 5; x++ {
-		if err := writeMetrics(lightValues); err != nil {
+		if err := writeMetrics(intVals); err != nil {
 			errLog.Println(err)
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		break
 	}
+
 	return true
 }
 
