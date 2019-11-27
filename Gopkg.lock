@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a01d9556718451f28578bc80c65adf0b4668b1bd6909474b45151ebe5a6fd1ee"
+  digest = "1:e37cbfb12f1f9c785d08ce801e261b509a1040fc26a617a47fc8ad5f69738ba8"
   name = "github.com/appf-anu/chamber-tools"
   packages = ["."]
   pruneopts = "UT"
-  revision = "1340fa30bf8f5b1bfa85fb7dd094afbab0d4d0f1"
+  revision = "e3d325bcb93ca655004ff3fd83b416afb10c88f9"
 
 [[projects]]
   branch = "master"
@@ -51,11 +51,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fc96eb481f72e9a5edeb4bb3f3610d3b9384c036f7c1e39f8c0dedff23d0c34d"
+  digest = "1:72f7bc975a18badcb4b05585929a12e042ab45cb0bee781aaab8044f39bd41f5"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "bd437916bb0eb726b873ee8e9b2dcf212d32e2fd"
+  revision = "63cb32ae39b28d6bb8e7e215c1fc39dd80dcdb02"
 
 [solve-meta]
   analyzer-name = "dep"
