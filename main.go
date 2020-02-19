@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/appf-anu/chamber-tools"
 	"flag"
 	"fmt"
+	"github.com/appf-anu/chamber-tools"
 	"github.com/bcampbell/fuzzytime"
 	"github.com/jacobsa/go-serial/serial"
 	"github.com/mdaffin/go-telegraf"
@@ -12,11 +12,10 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"regexp"
-	"strings"
-	"time"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 )
 
 const (
@@ -122,14 +121,6 @@ var (
 
 var port io.ReadWriteCloser
 
-const (
-	matchFloatExp = `[-+]?\d*\.\d+|\d+`
-	matchIntsExp  = `\b(\d+)\b`
-)
-
-// TsRegex is a regexp to find a timestamp within a filename
-var /* const */ matchFloat = regexp.MustCompile(matchFloatExp)
-var /* const */ matchInts = regexp.MustCompile(matchIntsExp)
 
 // ConstructPacket constructs a packet according to the protocol laid out by PSI to set a channel to value.
 // address is the "address" of the light, a non-negative integer.
@@ -264,7 +255,7 @@ func random(max int) int {
 }
 
 func setOne(port io.ReadWriteCloser, lightChannel, value int) (err error) {
-	if value < 0 {
+	if value == chamber_tools.NullTargetInt || value < 0 {
 		return nil
 	}
 	intensityPackt, err := SetIntensityPacket(lightChannel, value)
@@ -287,8 +278,8 @@ func setMany(port io.ReadWriteCloser, values []int) (err error) {
 	for i := 0; i < len(values) && i < len(availableChannels); i++ {
 		lightChannel := availableChannels[i]
 		value := values[i]
-		if value < 0 {
-			continue // dont set values less than 0.
+		if value == chamber_tools.NullTargetInt || value < 0{
+			continue // dont set null values or values less than 0.
 		}
 		intensityPackt, err := SetIntensityPacket(lightChannel, value)
 
@@ -387,7 +378,6 @@ func writeMetrics(lightValues []int) error {
 // runStuff, should send values and write metrics.
 // returns true if program should continue, false if program should retry
 func runStuff(point *chamber_tools.TimePoint) bool {
-
 	minLength := chamber_tools.Min(len(availableChannels), len(point.Channels))
 	if len(point.Channels) < len(availableChannels){
 		errLog.Printf("Number of light values in control file (%d) less than channels for this light (%d)," +
@@ -400,20 +390,20 @@ func runStuff(point *chamber_tools.TimePoint) bool {
 
 	// setup multiplier
 	multiplier := 1.0
-	if !absolute{
+	if !absolute {
 		multiplier = 10.22
 	}
 
 	intVals := make([]int, minLength)
-	for i, _ := range intVals {
-		if point.Channels[i] < 0{
-			intVals[i] = -1
+	for i := range intVals {
+		if point.Channels[i] == chamber_tools.NullTargetFloat64 || point.Channels[i] < 0 {
+			intVals[i] = chamber_tools.NullTargetInt
+			continue
 		}
 		// convert from percentage if we are not using absolute values.
-		intVals[i] = chamber_tools.Clamp(int(point.Channels[i] * multiplier), -1, 1000)
-
+		// maximum should be 1022, not 1000
+		intVals[i] = chamber_tools.Clamp(int(point.Channels[i] * multiplier), 0, 1022)
 	}
-
 
 	if err := setMany(port, intVals); err != nil {
 		errLog.Println(err)
