@@ -588,20 +588,19 @@ func main() {
 	portName := flag.Arg(0)
 	fi, err := os.Stat(portName)
 	if os.IsNotExist(err) {
-		fmt.Printf("%s does not exist, trying /dev/ttyUSB0", portName)
+		errLog.Printf("%s does not exist, trying /dev/ttyUSB0", portName)
 	}
 	portName = "/dev/ttyUSB0"
 	fi, err = os.Stat(portName)
 	if os.IsNotExist(err) {
-		fmt.Printf("%s does not exist, exiting", portName)
-		errLog.Fatal(err)
+		errLog.Fatalf("%s does not exist. exiting due to %v", portName, err)
 	}
 
 	switch mode := fi.Mode(); {
 		case mode&os.ModeSymlink != 0:
-			fmt.Println("symbolic link")
+			fmt.Printf("%s is a symbolic link", portName)
 		case mode&os.ModeDevice != 0:
-			fmt.Println("Device")
+			errLog.Printf("%s is a device", portName)
 	}
 
 	//9600 baud, 8 bits, no parity, handshake off, free mode
