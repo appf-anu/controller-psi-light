@@ -583,10 +583,30 @@ func main() {
 	// self.ser = serial.Serial('/dev/ttyUSB{}'.format(x), 9600, bytesize=serial.EIGHTBITS,
 	// parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE,
 	// rtscts=False, dsrdtr=False, xonxoff=False)
+	var err error
+
+	portName := flag.Arg(0)
+	fi, err := os.Stat(portName)
+	if os.IsNotExist(err) {
+		fmt.Printf("%s does not exist, trying /dev/ttyUSB0", portName)
+	}
+	portName = "/dev/ttyUSB0"
+	fi, err = os.Stat(portName)
+	if os.IsNotExist(err) {
+		fmt.Printf("%s does not exist, exiting", portName)
+		errLog.Fatal(err)
+	}
+
+	switch mode := fi.Mode(); {
+		case mode&os.ModeSymlink != 0:
+			fmt.Println("symbolic link")
+		case mode&os.ModeDevice != 0:
+			fmt.Println("Device")
+	}
 
 	//9600 baud, 8 bits, no parity, handshake off, free mode
 	options := serial.OpenOptions{
-		PortName:          flag.Arg(0),
+		PortName:          portName,
 		BaudRate:          9600,
 		DataBits:          8,
 		StopBits:          1,
@@ -594,9 +614,7 @@ func main() {
 		MinimumReadSize:   4,
 		RTSCTSFlowControl: true,
 	}
-	var err error
 	port, err = serial.Open(options)
-
 	if err != nil {
 		panic(err)
 	}
@@ -610,10 +628,10 @@ func main() {
 		setAllZero()
 	}
 	if doTheDiscoMode {
-		discoMode(100)
+		discoMode(1022)
 	}
 	if doTheScrollMode {
-		scrollMode(100)
+		scrollMode(1022)
 	}
 
 	if !dummy && conditionsPath != "" {
